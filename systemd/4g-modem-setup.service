@@ -1,0 +1,12 @@
+[Unit]
+Description=Activate 4G Modem PDP Context
+Requires=dev-modem_at.device
+After=network-online.target dev-modem_at.device
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/raspi-4g-autoconnect/scripts/activate_4g.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1e0e", ATTRS{idProduct}=="9011", ATTRS{bInterfaceNumber}=="02", SYMLINK+="modem_at"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1e0e", ATTRS{idProduct}=="9011", ATTRS{bInterfaceNumber}=="03", SYMLINK+="modem_data"
