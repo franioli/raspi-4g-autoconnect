@@ -1,44 +1,36 @@
 #!/bin/bash
+set -euo pipefail
 
-# modem_bootstrap.sh
-# This script initializes the modem and sets up the PPP connection.
-
-AT_PORT="/dev/modem_at"
-HAT_INTERFACE="usb0"
-MAX_TRIES=15
+AT_PORT="${AT_PORT:-/dev/modem_at}"
+APN="${APN:-mobile.vodafone.it}"
+DIAL_MODE="${DIAL_MODE:-0}"
+USB_NET_MODE="${USB_NET_MODE:-0}"
+MAX_TRIES=30
 COUNT=0
 
-# Function to check if the modem is connected
-check_modem_connection() {
-  if ifconfig | grep -q "$HAT_INTERFACE"; then
-    return 0  # Modem is connected
-  else
-    return 1  # Modem is not connected
-  fi
+send_at() {
+  local cmd="$1"
+  local pause="${2:-2}"
+  echo ">> $cmd"
+  printf '%s\r' "$cmd" > "$AT_PORT"
+  sleep "$pause"
 }
 
-# Function to initialize the modem
-initialize_modem() {
-  echo "Initializing modem..."
-  
-  # Wait until the device file exists
-  while [ ! -e "$AT_PORT" ] && [ $COUNT -lt $MAX_TRIES ]; do
-    sleep 2
-    COUNT=$((COUNT + 1))
-  done
+while [ ! -e "$AT_PORT" ] && [ $COUNT -lt $MAX_TRIES ]; do
+  sleep 2
+  COUNT=$((COUNT + 1))
+done
 
-  if [ -e "$AT_PORT" ]; then
-    echo "4G modem $AT_PORT found. Activating PDP context."
-    echo -e "AT+CGACT=1,1\r" > "$AT_PORT"
-  else
-    echo "4G modem port $AT_PORT not found after multiple attempts. Check hardware."
-    exit 1
-  fi
-}
-
-# Main script execution
-if ! check_modem_connection; then
-  initialize_modem
-else
-  echo "Modem is already connected."
+if [ ! -e "$AT_PORT" ]; then
+  echo "AT port $AT_PORT unavailable; ensure the modem is connected."
+  exit 1
 fi
+
+echo "Provisioning modem on $AT_PORT with APN '$APN'."
+send_at "AT"
+send_at "AT+CPIN?"
+send_at "AT+CGDCONT=1,\"IP\",\"$APN\""
+send_at "AT+CGACT=1,1"
+send_at "AT+DIALMODE=$DIAL_MODE"
+send_at "AT\$MYCONFIG=\"usbnetmode\",$USB_NET_MODE" 5
+echo "Provisioning complete; reboot or rerun activate_4g.sh to apply."

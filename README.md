@@ -2,6 +2,21 @@
 
 This project provides a set of scripts and configurations to enable automatic connection to a 4G modem (A7670E) on a Raspberry Pi. The scripts ensure that the modem is activated, the connection is established, and that the connection is monitored for reliability.
 
+## Table of Contents
+
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Setup Instructions](#setup-instructions)
+- [Configuration](#configuration)
+  - [Modem Activation (`scripts/activate_4g.sh`)](#modem-activation-scriptsactivate_4gsh)
+  - [Modem Bootstrap (`scripts/modem_bootstrap.sh`)](#modem-bootstrap-scriptsmodem_bootstrapsh)
+  - [Connection Watchdog (`scripts/watchdog.sh`)](#connection-watchdog-scriptswatchdogsh)
+  - [Systemd Service (`systemd/4g-modem-setup.service`)](#systemd-service-systemd4g-modem-setupservice)
+  - [Udev Rule (`udev/99-4g-hat.rules`)](#udev-rule-udev99-4g-hatrules)
+  - [Final Checks](#final-checks)
+- [Usage](#usage)
+- [Optional Cron Watchdog](#optional-cron-watchdog)
+
 ## Project Structure
 
 The project consists of the following components:
@@ -23,62 +38,91 @@ The project consists of the following components:
 - **docs/**: Contains additional documentation.
   - **CONFIGURATION.md**: Provides detailed configuration instructions for the scripts and systemd service.
 
+## Prerequisites
+
+- Ensure the Raspberry Pi runs Raspberry Pi OS.
+- Confirm the A7670E 4G HAT is connected and the SIM is active.
+- Clone this repository onto the device.
+
 ## Setup Instructions
 
 1. **Clone the Repository**: Clone this repository to your Raspberry Pi.
 
 2. **Install Dependencies**: Ensure that you have the necessary packages installed:
 
-```bash
-sudo apt update
-sudo apt install minicom usb-modeswitch ppp
-```
+   ```bash
+   sudo apt update
+   sudo apt install minicom usb-modeswitch ppp
+   ```
 
 3. **Configure udev Rules**: Copy the udev rules to the appropriate directory:
 
-```bash
-sudo cp udev/99-4g-hat.rules /etc/udev/rules.d/
-```
+   ```bash
+   sudo cp udev/99-4g-hat.rules /etc/udev/rules.d/
+   sudo udevadm control --reload-rules
+   sudo udevadm trigger
+   ```
 
 4. **Enable the Systemd Service**: Copy the systemd service file and enable it:
 
-```bash
-sudo cp systemd/4g-modem-setup.service /etc/systemd/system/
-sudo systemctl enable 4g-modem-setup.service
-```
-
-5. **Edit Configuration**: Modify the scripts as necessary to match your modem's settings and APN.
-
-6. Make the scripts executable:
-
    ```bash
-   chmod +x scripts/activate_4g.sh
-   chmod +x scripts/modem_bootstrap.sh
-   chmod +x scripts/watchdog.sh
+   sudo cp systemd/4g-modem-setup.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable 4g-modem-setup.service
    ```
 
-7. **Reboot**: Restart your Raspberry Pi to apply the changes and start the connection process automatically.
+5. **Make the scripts executable**:
 
-## Usage
+   ```bash
+   chmod +x scripts/activate_4g.sh scripts/modem_bootstrap.sh scripts/watchdog.sh
+   ```
 
-- The scripts will automatically attempt to connect to the 4G modem on boot.
-- The watchdog script can be set up as a cron job or systemd timer to run periodically and ensure persistent connectivity.
+6. **Reboot**: Restart your Raspberry Pi to apply the changes and start the connection process automatically.
 
-- Check the status of the systemd service:
+## Configuration
+
+### Modem Activation (`scripts/activate_4g.sh`)
+
+- Set `AT_PORT` to the persistent device link (for example `/dev/modem_at`).
+- Update modem-specific AT commands such as `AT+CGACT=1,1` if your carrier requires different PDP activation.
+
+### Modem Bootstrap (`scripts/modem_bootstrap.sh`)
+
+- Ensure PPP peer files (for example `/etc/ppp/peers/provider`) match the APN, username, and password from your carrier.
+- Confirm chat scripts or credentials referenced inside the script exist and are executable.
+
+### Connection Watchdog (`scripts/watchdog.sh`)
+
+- Change the ping target to a reliable host that suits your environment (e.g., `8.8.8.8`).
+- Tweak retry counts and sleep intervals to match your resilience requirements.
+
+### Systemd Service (`systemd/4g-modem-setup.service`)
+
+- Validate `After`/`Requires` directives include any services that must finish before modem setup.
+- Ensure `ExecStart` references the correct absolute path to `modem_bootstrap.sh`.
+
+### Udev Rule (`udev/99-4g-hat.rules`)
+
+- Confirm vendor and product IDs match the modem (`lsusb` helps identify them).
+- Verify the resulting symlink (e.g., `/dev/modem_at`) aligns with the paths used in the scripts.
+
+### Final Checks
 
 ```bash
+sudo systemctl restart 4g-modem-setup.service
 sudo systemctl status 4g-modem-setup.service
-```
-
-- Review logs for any errors:
-
-```bash
 journalctl -u 4g-modem-setup.service
 ```
 
-For detailed configuration options, refer to the [CONFIGURATION.md](docs/CONFIGURATION.md) file.
+If everything is configured correctly, reboot the Pi to ensure the connection comes up automatically.
 
-## Configure Cron Watchdog
+## Usage
+
+- The modem activation runs on boot through the systemd service.
+- Use the watchdog script through cron or a systemd timer to maintain connectivity.
+- Inspect logs via `journalctl -u 4g-modem-setup.service` for troubleshooting.
+
+## Optional Cron Watchdog
 
 Open the crontab for editing:
 
