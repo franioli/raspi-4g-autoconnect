@@ -1,6 +1,6 @@
 [Unit]
 Description=Activate 4G Modem PDP Context
-Requires=dev-modem_at.device
+Wants=network-online.target dev-modem_at.device
 After=network-online.target dev-modem_at.device
 
 [Service]

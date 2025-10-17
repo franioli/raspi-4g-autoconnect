@@ -4,13 +4,13 @@
 # This script initializes the modem and sets up the PPP connection.
 
 AT_PORT="/dev/modem_at"
-PPP_INTERFACE="ppp0"
+HAT_INTERFACE="usb0"
 MAX_TRIES=15
 COUNT=0
 
 # Function to check if the modem is connected
 check_modem_connection() {
-  if ifconfig | grep -q "$PPP_INTERFACE"; then
+  if ifconfig | grep -q "$HAT_INTERFACE"; then
     return 0  # Modem is connected
   else
     return 1  # Modem is not connected
