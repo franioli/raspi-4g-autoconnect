@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-AT_PORT="/dev/modem_at"
+AT_PORT="/dev/ttyUSB1"
 UPLINK_IFACE="${UPLINK_IFACE:-usb0}"
 DNS_SERVERS="${DNS_SERVERS:-1.1.1.1 8.8.8.8}"
 PING_TARGET="${PING_TARGET:-www.google.com}"

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-AT_PORT="${AT_PORT:-/dev/modem_at}"
+AT_PORT="${AT_PORT:-/dev/ttyUSB1}"
 APN="${APN:-mobile.vodafone.it}"
 DIAL_MODE="${DIAL_MODE:-0}"
 USB_NET_MODE="${USB_NET_MODE:-0}"
