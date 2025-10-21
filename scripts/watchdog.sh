@@ -1,43 +1,30 @@
 #!/bin/bash
+set -euo pipefail
 
-# watchdog.sh - Monitors the 4G connection and attempts to reconnect if lost.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ACTIVATE_SCRIPT="${ACTIVATE_SCRIPT:-$SCRIPT_DIR/activate_4g.sh}"
 
-AT_PORT="/dev/modem_at"
-CHECK_INTERVAL=30  # Time in seconds between checks
-MAX_RETRIES=5      # Maximum number of retries before giving up
+UPLINK_IFACE="${UPLINK_IFACE:-usb0}"
+PING_TARGET="${PING_TARGET:-www.google.com}"
+PING_COUNT="${PING_COUNT:-1}"
+PING_TIMEOUT="${PING_TIMEOUT:-5}"
 
-function check_connection {
-    # Check if the modem is connected by pinging a reliable address
-    if ping -I usb0 -c 1 www.google.com &> /dev/null; then
-        return 0  # Connection is active
-    else
-        return 1  # Connection is lost
-    fi
+export UPLINK_IFACE PING_TARGET PING_COUNT PING_TIMEOUT
+
+log() {
+  printf '[%s] %s\n' "$(date -Is)" "$*"
 }
 
-function reconnect {
-    echo "Connection lost. Attempting to reconnect..."
-    for ((i=1; i<=MAX_RETRIES; i++)); do
-        echo "Attempt $i of $MAX_RETRIES..."
-        # Activate the PDP context
-        echo -e "AT+CGACT=1,1\r" > "$AT_PORT"
-        sleep 5  # Wait for a few seconds before checking again
+if "$ACTIVATE_SCRIPT" --check; then
+  log "Connection on $UPLINK_IFACE is active."
+  exit 0
+fi
 
-        if check_connection; then
-            echo "Reconnected successfully!"
-            return 0
-        fi
-    done
-    echo "Failed to reconnect after $MAX_RETRIES attempts."
-    return 1
-}
+log "Connection on $UPLINK_IFACE is down; invoking activator."
+if "$ACTIVATE_SCRIPT"; then
+  log "Reactivation succeeded."
+  exit 0
+fi
 
-# Main loop to monitor the connection
-while true; do
-    if check_connection; then
-        echo "Connection is active."
-    else
-        reconnect
-    fi
-    sleep $CHECK_INTERVAL
-done
+log "Reactivation failed."
+exit 1

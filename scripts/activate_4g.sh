@@ -4,8 +4,14 @@ set -euo pipefail
 AT_PORT="/dev/modem_at"
 UPLINK_IFACE="${UPLINK_IFACE:-usb0}"
 DNS_SERVERS="${DNS_SERVERS:-1.1.1.1 8.8.8.8}"
+PING_TARGET="${PING_TARGET:-www.google.com}"
+PING_COUNT="${PING_COUNT:-1}"
+PING_TIMEOUT="${PING_TIMEOUT:-5}"
 MAX_TRIES=15
-COUNT=0
+
+log() {
+  printf '[%s] %s\n' "$(date -Is)" "$*"
+}
 
 configure_dns() {
   if [ -z "$DNS_SERVERS" ]; then
@@ -24,18 +30,85 @@ configure_dns() {
   fi
 }
 
-while [ ! -e "$AT_PORT" ] && [ $COUNT -lt $MAX_TRIES ]; do
-  sleep 2
-  COUNT=$((COUNT + 1))
-done
+wait_for_at_port() {
+  local count=0
+  while [ ! -e "$AT_PORT" ] && [ $count -lt $MAX_TRIES ]; do
+    sleep 2
+    count=$((count + 1))
+  done
+  if [ -e "$AT_PORT" ]; then
+    log "4G modem $AT_PORT found."
+    return 0
+  fi
+  log "4G modem port $AT_PORT not found after $MAX_TRIES attempts. Check hardware."
+  return 1
+}
 
-if [ -e "$AT_PORT" ]; then
-  echo "4G modem $AT_PORT found. Activating PDP context."
+activate_pdp() {
   printf 'AT+CGACT=1,1\r' > "$AT_PORT"
   sleep 2
-  echo "Updating DNS servers: $DNS_SERVERS"
+}
+
+obtain_dhcp() {
+  if ! command -v dhclient >/dev/null 2>&1; then
+    log "dhclient not available; skipping DHCP."
+    return 1
+  fi
+  log "Requesting DHCP lease on $UPLINK_IFACE."
+  dhclient -r "$UPLINK_IFACE" >/dev/null 2>&1 || true
+  dhclient -v -1 "$UPLINK_IFACE"
+}
+
+ensure_default_route() {
+  if command -v ip >/dev/null 2>&1; then
+    if ip route show default dev "$UPLINK_IFACE" | grep -q .; then
+      log "Default route already present on $UPLINK_IFACE."
+      return 0
+    fi
+    log "Adding default route via $UPLINK_IFACE."
+    ip route replace default dev "$UPLINK_IFACE"
+  else
+    if route -n | awk '$1=="0.0.0.0" && $8=="'"$UPLINK_IFACE"'" {found=1} END{exit(!found)}'; then
+      log "Default route already present on $UPLINK_IFACE."
+      return 0
+    fi
+    log "Adding default route via legacy route command."
+    route add -net 0.0.0.0 dev "$UPLINK_IFACE"
+  fi
+}
+
+check_connection() {
+  ping -I "$UPLINK_IFACE" -c "$PING_COUNT" -W "$PING_TIMEOUT" "$PING_TARGET" >/dev/null 2>&1
+}
+
+ensure_connection() {
+  wait_for_at_port || return 1
+  log "Activating PDP context."
+  activate_pdp
+  log "Updating DNS servers: $DNS_SERVERS"
   configure_dns
-else
-  echo "4G modem port $AT_PORT not found after multiple attempts. Check hardware."
-  exit 1
-fi
+  obtain_dhcp || log "Failed to obtain DHCP lease."
+  ensure_default_route || log "Failed to ensure default route."
+  if check_connection; then
+    log "Connectivity check passed."
+    return 0
+  fi
+  log "Connectivity check failed."
+  return 1
+}
+
+case "${1:-}" in
+  --check)
+    if check_connection; then
+      exit 0
+    fi
+    exit 1
+    ;;
+  *)
+    if ensure_connection; then
+      exit 0
+    fi
+    log "4G activation failed."
+    exit 1
+    ;;
+esac

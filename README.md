@@ -54,7 +54,7 @@ The project consists of the following components:
 
    ```bash
    sudo apt update
-   sudo apt install minicom usb-modeswitch ppp
+   sudo apt install minicom usb-modeswitch ppp isc-dhcp-client
    ```
 
 3. **Configure udev Rules**: Copy the udev rules to the appropriate directory:
@@ -87,6 +87,8 @@ The project consists of the following components:
 
 - Set `AT_PORT` to the persistent device link (for example `/dev/modem_at`).
 - Update modem-specific AT commands such as `AT+CGACT=1,1` if your carrier requires different PDP activation.
+- The script now requests an IP lease via `dhclient -1`, ensures the default route is bound to `UPLINK_IFACE`, and validates connectivity (override `PING_TARGET`, `PING_TIMEOUT`, or `PING_COUNT` as needed).
+- Use `scripts/activate_4g.sh --check` to probe link health without altering the connection state.
 
 ### Modem setup (`scripts/modem_setup.sh`)
 
@@ -97,6 +99,7 @@ The project consists of the following components:
 
 - Change the ping target to a reliable host that suits your environment (e.g., `8.8.8.8`).
 - Tweak retry counts and sleep intervals to match your resilience requirements.
+- The watchdog delegates recovery to `activate_4g.sh`; adjust `ACTIVATE_SCRIPT` if you relocate the activator.
 
 ### Systemd Service (`systemd/4g-modem-setup.service`)
 
