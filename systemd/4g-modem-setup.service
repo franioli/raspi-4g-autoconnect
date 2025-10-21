@@ -5,7 +5,8 @@ After=network-online.target dev-modem_at.device
 
 [Service]
 Type=oneshot
-ExecStart=/home/pi/raspi-4g-autoconnect/scripts/activate_4g.sh
+# run the activator in repo root and force full activation at boot
+ExecStart=/home/pi/raspi-4g-autoconnect/activate_4g.sh --up
 RemainAfterExit=yes
 
 [Install]

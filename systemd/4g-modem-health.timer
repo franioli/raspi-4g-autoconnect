@@ -1,0 +1,11 @@
+[Unit]
+Description=Run 4G modem health check every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+AccuracySec=1s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
