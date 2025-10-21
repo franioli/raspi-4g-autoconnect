@@ -10,8 +10,8 @@ This project provides a set of scripts and configurations to enable automatic co
   - [Prerequisites](#prerequisites)
   - [Setup Instructions](#setup-instructions)
   - [Configuration](#configuration)
-    - [Modem Activation (`scripts/activate_4g.sh`)](#modem-activation-scriptsactivate_4gsh)
-    - [Modem setup (`scripts/modem_setup.sh`)](#modem-setup-scriptsmodem_setupsh)
+    - [Modem Activation (`activate_4g.sh`)](#modem-activation-activate_4gsh)
+    - [Modem setup (`modem_setup.sh`)](#modem-setup-modem_setupsh)
     - [Connection Health Checks](#connection-health-checks)
     - [Systemd Service (`systemd/4g-modem-setup.service`)](#systemd-service-systemd4g-modem-setupservice)
     - [Udev Rule (`udev/99-4g-hat.rules`)](#udev-rule-udev99-4g-hatrules)
@@ -25,8 +25,8 @@ The project consists of the following components:
 
 - **scripts/**: Contains the main scripts for modem activation and connection management.
 
-  - **modem_setup.sh**: Configures the modem and sets up the PPP connection.
   - **activate_4g.sh**: Activates the 4G modem by sending AT commands to establish a connection.
+  - **modem_setup.sh**: Configures the modem and sets up the PPP connection.
 
 - **systemd/**: Contains the systemd service file for managing the execution of the connection scripts at boot.
 
@@ -75,21 +75,21 @@ The project consists of the following components:
 5. **Make the scripts executable**:
 
    ```bash
-   chmod +x scripts/activate_4g.sh scripts/modem_setup.sh
+   chmod +x activate_4g.sh modem_setup.sh
    ```
 
 6. **Reboot**: Restart your Raspberry Pi to apply the changes and start the connection process automatically.
 
 ## Configuration
 
-### Modem Activation (`scripts/activate_4g.sh`)
+### Modem Activation (`activate_4g.sh`)
 
 - Set `AT_PORT` to the persistent device link (for example `/dev/modem_at`).
 - Update modem-specific AT commands such as `AT+CGACT=1,1` if your carrier requires different PDP activation.
 - The script now requests an IP lease via `dhclient -1`, ensures the default route is bound to `UPLINK_IFACE`, and validates connectivity (override `PING_TARGET`, `PING_TIMEOUT`, or `PING_COUNT` as needed).
 - Use `scripts/activate_4g.sh --check` to probe link health without altering the connection state.
 
-### Modem setup (`scripts/modem_setup.sh`)
+### Modem setup (`modem_setup.sh`)
 
 - Ensure PPP peer files (for example `/etc/ppp/peers/provider`) match the APN, username, and password from your carrier.
 - Confirm chat scripts or credentials referenced inside the script exist and are executable.
@@ -137,16 +137,12 @@ crontab -e
 Add the following lines to run the activation script at reboot and the watchdog script every 5 minutes:
 
 ```bash
-@reboot /bin/sleep 60 && /home/pi/raspi-4g-autoconnect/scripts/activate_4g.sh --up >> /home/pi/logs/4g-activate.log 2>&1
-*/5 * * * * /home/pi/raspi-4g-autoconnect/scripts/activate_4g.sh --check-and-up >> /home/pi/logs/4g-health.log 2>&1
+@reboot /bin/sleep 60 && /home/pi/raspi-4g-autoconnect/activate_4g.sh --up >> /home/pi/logs/4g-activate.log 2>&1
+*/5 * * * * /home/pi/raspi-4g-autoconnect/activate_4g.sh --check-and-up >> /home/pi/logs/4g-health.log 2>&1
 ```
 
 Ensure both scripts are executable and the log directory is writable:
 
 ```bash
 mkdir -p /home/pi/logs
-```
-
-```
-
 ```
