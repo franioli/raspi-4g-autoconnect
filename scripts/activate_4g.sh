@@ -97,18 +97,51 @@ ensure_connection() {
   return 1
 }
 
+usage() {
+  cat <<'EOF'
+Usage: activate_4g.sh [--up|--check|--check-and-up|--help]
+  --check           Return success if link is reachable.
+  --check-and-up    Check the link and recover if needed.
+  --up              Force full activation (default action).
+  --help            Show this message.
+EOF
+}
+
 case "${1:-}" in
+  --help|-h)
+    usage
+    exit 0
+    ;;
   --check)
     if check_connection; then
+      log "Connectivity check passed."
       exit 0
     fi
+    log "Connectivity check failed."
     exit 1
     ;;
-  *)
+  --check-and-up)
+    if check_connection; then
+      log "Connectivity already up."
+      exit 0
+    fi
+    log "Connectivity down; attempting activation."
     if ensure_connection; then
       exit 0
     fi
     log "4G activation failed."
     exit 1
+    ;;
+  ""|--up)
+    if ensure_connection; then
+      exit 0
+    fi
+    log "4G activation failed."
+    exit 1
+    ;;
+  *)
+    log "Unknown option: $1"
+    usage
+    exit 2
     ;;
 esac

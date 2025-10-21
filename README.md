@@ -12,7 +12,7 @@ This project provides a set of scripts and configurations to enable automatic co
   - [Configuration](#configuration)
     - [Modem Activation (`scripts/activate_4g.sh`)](#modem-activation-scriptsactivate_4gsh)
     - [Modem setup (`scripts/modem_setup.sh`)](#modem-setup-scriptsmodem_setupsh)
-    - [Connection Watchdog (`scripts/watchdog.sh`)](#connection-watchdog-scriptswatchdogsh)
+    - [Connection Health Checks](#connection-health-checks)
     - [Systemd Service (`systemd/4g-modem-setup.service`)](#systemd-service-systemd4g-modem-setupservice)
     - [Udev Rule (`udev/99-4g-hat.rules`)](#udev-rule-udev99-4g-hatrules)
     - [Final Checks](#final-checks)
@@ -27,7 +27,6 @@ The project consists of the following components:
 
   - **modem_setup.sh**: Configures the modem and sets up the PPP connection.
   - **activate_4g.sh**: Activates the 4G modem by sending AT commands to establish a connection.
-  - **watchdog.sh**: Monitors the connection status and attempts to reconnect if the connection is lost.
 
 - **systemd/**: Contains the systemd service file for managing the execution of the connection scripts at boot.
 
@@ -76,7 +75,7 @@ The project consists of the following components:
 5. **Make the scripts executable**:
 
    ```bash
-   chmod +x scripts/activate_4g.sh scripts/modem_setup.sh scripts/watchdog.sh
+   chmod +x scripts/activate_4g.sh scripts/modem_setup.sh
    ```
 
 6. **Reboot**: Restart your Raspberry Pi to apply the changes and start the connection process automatically.
@@ -95,11 +94,11 @@ The project consists of the following components:
 - Ensure PPP peer files (for example `/etc/ppp/peers/provider`) match the APN, username, and password from your carrier.
 - Confirm chat scripts or credentials referenced inside the script exist and are executable.
 
-### Connection Watchdog (`scripts/watchdog.sh`)
+### Connection Health Checks
 
-- Change the ping target to a reliable host that suits your environment (e.g., `8.8.8.8`).
-- Tweak retry counts and sleep intervals to match your resilience requirements.
-- The watchdog delegates recovery to `activate_4g.sh`; adjust `ACTIVATE_SCRIPT` if you relocate the activator.
+- `scripts/activate_4g.sh --check` probes link status without altering modem state.
+- `scripts/activate_4g.sh --check-and-up` validates connectivity and triggers recovery when needed.
+- Override `PING_TARGET`, `PING_TIMEOUT`, or `PING_COUNT` to tune the test.
 
 ### Systemd Service (`systemd/4g-modem-setup.service`)
 
@@ -138,12 +137,16 @@ crontab -e
 Add the following lines to run the activation script at reboot and the watchdog script every 5 minutes:
 
 ```bash
-@reboot /bin/sleep 60 && /home/pi/raspi-4g-autoconnect/scripts/activate_4g.sh >> /home/pi/logs/4g-activate.log 2>&1
-*/5 * * * * /home/pi/raspi-4g-autoconnect/scripts/watchdog.sh >> /home/pi/logs/4g-watchdog.log 2>&1
+@reboot /bin/sleep 60 && /home/pi/raspi-4g-autoconnect/scripts/activate_4g.sh --up >> /home/pi/logs/4g-activate.log 2>&1
+*/5 * * * * /home/pi/raspi-4g-autoconnect/scripts/activate_4g.sh --check-and-up >> /home/pi/logs/4g-health.log 2>&1
 ```
 
 Ensure both scripts are executable and the log directory is writable:
 
 ```bash
 mkdir -p /home/pi/logs
+```
+
+```
+
 ```
