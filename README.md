@@ -4,18 +4,20 @@ This project provides a set of scripts and configurations to enable automatic co
 
 ## Table of Contents
 
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Setup Instructions](#setup-instructions)
-- [Configuration](#configuration)
-  - [Modem Activation (`scripts/activate_4g.sh`)](#modem-activation-scriptsactivate_4gsh)
-  - [Modem Bootstrap (`scripts/modem_bootstrap.sh`)](#modem-bootstrap-scriptsmodem_bootstrapsh)
-  - [Connection Watchdog (`scripts/watchdog.sh`)](#connection-watchdog-scriptswatchdogsh)
-  - [Systemd Service (`systemd/4g-modem-setup.service`)](#systemd-service-systemd4g-modem-setupservice)
-  - [Udev Rule (`udev/99-4g-hat.rules`)](#udev-rule-udev99-4g-hatrules)
-  - [Final Checks](#final-checks)
-- [Usage](#usage)
-- [Optional Cron Watchdog](#optional-cron-watchdog)
+- [Raspberry Pi 4G Autoconnect](#raspberry-pi-4g-autoconnect)
+  - [Table of Contents](#table-of-contents)
+  - [Project Structure](#project-structure)
+  - [Prerequisites](#prerequisites)
+  - [Setup Instructions](#setup-instructions)
+  - [Configuration](#configuration)
+    - [Modem Activation (`scripts/activate_4g.sh`)](#modem-activation-scriptsactivate_4gsh)
+    - [Modem setup (`scripts/modem_setup.sh`)](#modem-setup-scriptsmodem_setupsh)
+    - [Connection Watchdog (`scripts/watchdog.sh`)](#connection-watchdog-scriptswatchdogsh)
+    - [Systemd Service (`systemd/4g-modem-setup.service`)](#systemd-service-systemd4g-modem-setupservice)
+    - [Udev Rule (`udev/99-4g-hat.rules`)](#udev-rule-udev99-4g-hatrules)
+    - [Final Checks](#final-checks)
+  - [Usage](#usage)
+  - [Optional Cron Watchdog](#optional-cron-watchdog)
 
 ## Project Structure
 
@@ -23,8 +25,8 @@ The project consists of the following components:
 
 - **scripts/**: Contains the main scripts for modem activation and connection management.
 
+  - **modem_setup.sh**: Configures the modem and sets up the PPP connection.
   - **activate_4g.sh**: Activates the 4G modem by sending AT commands to establish a connection.
-  - **modem_bootstrap.sh**: Initializes the modem and sets up the PPP connection, checking if the modem is connected.
   - **watchdog.sh**: Monitors the connection status and attempts to reconnect if the connection is lost.
 
 - **systemd/**: Contains the systemd service file for managing the execution of the connection scripts at boot.
@@ -74,7 +76,7 @@ The project consists of the following components:
 5. **Make the scripts executable**:
 
    ```bash
-   chmod +x scripts/activate_4g.sh scripts/modem_bootstrap.sh scripts/watchdog.sh
+   chmod +x scripts/activate_4g.sh scripts/modem_setup.sh scripts/watchdog.sh
    ```
 
 6. **Reboot**: Restart your Raspberry Pi to apply the changes and start the connection process automatically.
@@ -86,7 +88,7 @@ The project consists of the following components:
 - Set `AT_PORT` to the persistent device link (for example `/dev/modem_at`).
 - Update modem-specific AT commands such as `AT+CGACT=1,1` if your carrier requires different PDP activation.
 
-### Modem Bootstrap (`scripts/modem_bootstrap.sh`)
+### Modem setup (`scripts/modem_setup.sh`)
 
 - Ensure PPP peer files (for example `/etc/ppp/peers/provider`) match the APN, username, and password from your carrier.
 - Confirm chat scripts or credentials referenced inside the script exist and are executable.
@@ -99,7 +101,7 @@ The project consists of the following components:
 ### Systemd Service (`systemd/4g-modem-setup.service`)
 
 - Validate `After`/`Requires` directives include any services that must finish before modem setup.
-- Ensure `ExecStart` references the correct absolute path to `modem_bootstrap.sh`.
+- Ensure `ExecStart` references the correct absolute path to `modem_setup.sh`.
 
 ### Udev Rule (`udev/99-4g-hat.rules`)
 
